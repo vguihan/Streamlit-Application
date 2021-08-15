@@ -1,5 +1,4 @@
-python -m pip install plotly
-python -m pip install modAL
-python -m pip install streamlit-aggrid
-python -m pip install matplotlib 
-
+python pip install plotly
+python pip install modAL
+python pip install streamlit-aggrid
+python pip install matplotlib
