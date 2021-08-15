@@ -5,6 +5,5 @@ numpy
 altair
 plotly
 plotly.express
-plotly.graph_objects
 pickle
 pyod
