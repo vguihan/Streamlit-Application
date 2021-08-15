@@ -5,5 +5,4 @@ numpy
 altair
 plotly
 plotly.express
-pickle
 pyod
