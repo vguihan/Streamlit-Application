@@ -1,4 +1,10 @@
-plotly
-modAL
-streamlit-aggrid
+streamlit
+pandas
 matplotlib
+numpy
+altair
+plotly
+plotly.express
+plotly.graph_objects
+pickle
+pyod
