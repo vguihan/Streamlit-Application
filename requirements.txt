@@ -6,3 +6,6 @@ altair
 plotly
 plotly.express
 pyod
+modAL
+sklearn
+functools
