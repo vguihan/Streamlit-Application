@@ -16,15 +16,15 @@ from modAL.batch import uncertainty_batch_sampling
 from functools import partial
 from pyod.models.knn import KNN
 from sklearn.ensemble import RandomForestClassifier
-from pyod.models.cblof import CBLOF
-from pyod.models.feature_bagging import FeatureBagging
-from pyod.models.hbos import HBOS
-from pyod.models.iforest import IForest
-from pyod.models.lof import LOF
+#from pyod.models.cblof import CBLOF
+#from pyod.models.feature_bagging import FeatureBagging
+#from pyod.models.hbos import HBOS
+#from pyod.models.iforest import IForest
+#from pyod.models.lof import LOF
 
 #Let's setup the interactive components on the left side bar first
 st.sidebar.title("Start by clustering the data.")
-cluster_slider = st.sidebar.slider(min_value=1, max_value=6, value=2, label="First, select the number of clusters.")
+cluster_slider = st.sidebar.slider(min_value=1, max_value=10, value=8, label="First, select the number of clusters.")
 st.sidebar.write('Now you can check your results on the right. Change this setting and the settings that follow to explore the data.')
 
 st.sidebar.title("Choose your learner.")
@@ -47,16 +47,28 @@ st.sidebar.write("As you adjust these variables, the graphs on the right will re
 #https://www.askpython.com/python/examples/plot-k-means-clusters-python
 #https://discuss.streamlit.io/t/clustering-or-classifying-data-into-groups/636/2
 
-df = pd.read_csv("minidata2.csv", delimiter=",")
-#data = load_digits().data
+#Let's cache the data -- 100,000 rows is a lot!
+import time
+
+st.title('Our initial dataframe, with several of the more common features in network traffic data flows.')
+@st.cache
+def load_data1():
+    data1 = pd.read_csv("unicauca_dataset_trimmed.csv")
+    return data1
+data1 = load_data1()
+df = data1
+st.dataframe(df)
+	
+#Just the numeric data to make PCA happy
+dfnumerics = df.drop(columns=['Flow.ID','Source.IP','Source.Port','Destination.IP','Destination.Port','Protocol','Timestamp','ProtocolName'])
 pca = PCA(2)
  
 #Transform the data
-dftransformed = pca.fit_transform(df)
+dftransformed = pca.fit_transform(dfnumerics)
 dfshaped = dftransformed.shape
 
 kmeans = KMeans(n_clusters=cluster_slider, random_state=0).fit(dftransformed)
-labels = kmeans.fit_predict(df)
+labels = kmeans.fit_predict(dfnumerics)
 label = kmeans.labels_
 clrs = ["red", "seagreen", "orange", "blue", "yellow", "purple"]
 n_labels = len(set(labels))
@@ -67,23 +79,29 @@ for i in u_labels:
     ax.scatter(dftransformed[labels == i , 0] , dftransformed[labels == i , 1] , label = i)
 ax.legend()
 
+
+st.title('Our KMeans scatter plot and clustered dataframe. Here, the cluster number functions as the target.')
+st.write('The table provides the flow ID and a number of other features that were dropped from the table initially to facilitate the PCA analysis. The goal is to provide a little more context to the analyst.')
+
+
 #graph the cluster
 st.pyplot(fig)
 
-#Join the PCA data with the labels for classifaction, the labels setup as the target
+#Join the PCA data with the labels for classifaction, the labels setup as the target.
 dflabels = pd.DataFrame(labels)
-dfclustered = pd.concat([df, dflabels], axis=1)
+dfclustered = pd.concat([dfnumerics, dflabels], axis=1)
 
-#Now do the classification
+#Join the labels with the full record for a more complete view for the analyst. 
+dfcomplete = pd.concat([df, dflabels], axis=1)
+	
+#Starting the classification
 data_array = dfclustered.values
-X_raw = data_array[:197, :3]
-y_raw = data_array[:197, 5]
+X_raw = data_array[:100000, :4]
+y_raw = data_array[:100000, 5]
 
 
 #Much of the code for the active learning section was adapted from the modAL example application:
 #https://modal-python.readthedocs.io/en/latest/content/examples/ranked_batch_mode.html
-
-st.title('Our initial clustered dataframe. Here, the cluster number functions as the target.')
 st.dataframe(dfclustered)
 RANDOM_STATE_SEED = 123
 np.random.seed(RANDOM_STATE_SEED)
@@ -122,8 +140,10 @@ BATCH_SIZE = slider_batchsize
 preset_batch = partial(uncertainty_batch_sampling, n_instances=BATCH_SIZE)
 
 # Specify our active learning model. It would be easily possible to expand on aglorithms here.
-learner = ActiveLearner(estimator=knn, X_training=X_train,y_training=y_train, query_strategy=preset_batch)
-#learner = ActiveLearner(estimator=RandomForestClassifier() , X_training=X_train, y_training=y_train, query_strategy=preset_batch)
+if option_algorithm == "KNN": 
+	learner = ActiveLearner(estimator=knn, X_training=X_train,y_training=y_train, query_strategy=preset_batch)
+else:
+	learner = ActiveLearner(estimator=RandomForestClassifier() , X_training=X_train, y_training=y_train, query_strategy=preset_batch)
 
 # Plotting data
 predictions = learner.predict(X_raw)
@@ -213,12 +233,14 @@ array =  (x_component, y_component, is_correct)
 array_t = np.transpose(array)
 df2 = pd.DataFrame(array_t, columns=['x','y','correct'])
 df3 = pd.concat([df2, df], axis=1)
-fig = px.scatter(df3, x="x", y="y", color="correct", hover_data=['total_local_bytes','total_other_bytes','total_bytes','total_packets',df3.index])
+fig = px.scatter(df3, x="x", y="y", color="correct", hover_data=['Flow.ID','Source.IP','Source.Port','Destination.IP','Destination.Port','Protocol','Timestamp','ProtocolName',df3.index])
 fig.update_layout(
     title_text='Traffic classes after classification learning'
 )
 st.title('Matplot is nice (and easy to see), but Plotly can make the presentation even more interactive, showing the analyst key bits of the data on hover.')
+st.write('It is also easy to zoom in and out of various parts of the graph, save the graph to PNG and other nice touches.')
 st.plotly_chart(fig)
+
 st.title('Which the analyst can then reference in a combined dataframe with the original traffic record, its plotting reduction, and whether it was correct.')
 st.dataframe(df3)
 
