@@ -1,10 +1,10 @@
-streamlit
-pandas
-matplotlib
-numpy
+streamlit==0.78.0
+pandas==0.24.2
+matplotlib==3.1.0
+numpy==1.20.1
 altair
-plotly
+plotly==5.1.0
 plotly.express
 pyod==0.7.4
-modAL
-sklearn
+modAL==0.3.4
+sklearn==0.21.2
