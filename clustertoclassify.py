@@ -47,7 +47,7 @@ st.sidebar.write("As you adjust these variables, the graphs on the right will re
 #https://www.askpython.com/python/examples/plot-k-means-clusters-python
 #https://discuss.streamlit.io/t/clustering-or-classifying-data-into-groups/636/2
 
-df = pd.read_csv("/home/vguihan/Documents/minidata2.csv", delimiter=",")
+df = pd.read_csv("minidata2.csv", delimiter=",")
 #data = load_digits().data
 pca = PCA(2)
  
