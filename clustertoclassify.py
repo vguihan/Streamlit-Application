@@ -22,6 +22,8 @@ from sklearn.ensemble import RandomForestClassifier
 #from pyod.models.iforest import IForest
 #from pyod.models.lof import LOF
 
+st.set_page_config(page_title=None, page_icon=None, layout='wide', initial_sidebar_state='auto')
+
 #Let's setup the interactive components on the left side bar first
 st.sidebar.title("Start by clustering the data.")
 cluster_slider = st.sidebar.slider(min_value=1, max_value=10, value=8, label="First, select the number of clusters.")
@@ -29,8 +31,8 @@ st.sidebar.write('Now you can check your results on the right. Change this setti
 
 st.sidebar.title("Choose your learner.")
 option_algorithm = st.sidebar.selectbox(
-     'Which learner would you like to try? All three approaches use batch-based uncertainty sampling.',
-     ('KNN', 'RandomForest', 'Some Third Algo'))
+     'Which learner would you like to try? Both approaches use batch-based uncertainty sampling.',
+     ('RandomForest', 'KNN'))
 st.sidebar.write('You selected:', option_algorithm)
 
 st.sidebar.title("Change batch size")
@@ -51,16 +53,29 @@ st.sidebar.write("As you adjust these variables, the graphs on the right will re
 import time
 
 st.title('Our initial dataframe, with several of the more common features in network traffic data flows.')
-@st.cache
+st.write('For simplicity and to save on load, the initial recordset includes a number of key features from a typical traffic flow, but not the entire record.')
+
+import time
+my_bar = st.progress(0)
+for percent_complete in range(100):
+	time.sleep(0.1)
+	my_bar.progress(percent_complete + 1)
+
+@st.cache(ttl=24*60*60)
 def load_data1():
     data1 = pd.read_csv("unicauca_dataset_trimmed.csv")
     return data1
 data1 = load_data1()
 df = data1
-st.dataframe(df)
+st.dataframe(data1)
 	
 #Just the numeric data to make PCA happy
-dfnumerics = df.drop(columns=['Flow.ID','Source.IP','Source.Port','Destination.IP','Destination.Port','Protocol','Timestamp','ProtocolName'])
+@st.cache
+def load_data2():
+    data2 = df.drop(columns=['Flow.ID','Source.IP','Source.Port','Destination.IP','Destination.Port','Protocol','Timestamp','ProtocolName'])
+    return data2
+data2 = load_data2()
+dfnumerics = data2
 pca = PCA(2)
  
 #Transform the data
@@ -83,7 +98,6 @@ ax.legend()
 st.title('Our KMeans scatter plot and clustered dataframe. Here, the cluster number functions as the target.')
 st.write('The table provides the flow ID and a number of other features that were dropped from the table initially to facilitate the PCA analysis. The goal is to provide a little more context to the analyst.')
 
-
 #graph the cluster
 st.pyplot(fig)
 
@@ -96,9 +110,8 @@ dfcomplete = pd.concat([df, dflabels], axis=1)
 	
 #Starting the classification
 data_array = dfclustered.values
-X_raw = data_array[:100000, :4]
-y_raw = data_array[:100000, 5]
-
+X_raw = data_array[:10000, :4]
+y_raw = data_array[:10000, 5]
 
 #Much of the code for the active learning section was adapted from the modAL example application:
 #https://modal-python.readthedocs.io/en/latest/content/examples/ranked_batch_mode.html
@@ -151,7 +164,11 @@ is_correct = (predictions == y_raw)
 unqueried_score = learner.score(X_raw, y_raw)
 
 st.title('Initially, the learner is not that smart -- the more clusters it has to figure out, the more poorly it performs.')
-
+my_bar2 = st.progress(0)
+for percent_complete in range(100):
+	time.sleep(0.1)
+	my_bar2.progress(percent_complete + 1)
+	
 # Plot our classification results.
 fig, ax = plt.subplots(figsize=(8.5, 6), dpi=130)
 ax.scatter(x=x_component[is_correct],  y=y_component[is_correct],  c='g', marker='+', label='Correct')
@@ -160,13 +177,17 @@ ax.legend(loc='top left')
 ax.set_title("ActiveLearner class predictions (Accuracy: {score:.3f})".format(score=unqueried_score))
 st.pyplot(fig)
 
-# Pool-based sampling. The raw samples could be set interactively.
-#N_RAW_SAMPLES = 80
+# Pool-based sampling.
+
+st.title('But after only a few queries, its classification gets much better.')
+st.write('This step takes a bit, since it will run between 20 - 50 queries depending on the batch size and the sample size.')
+placeholder = st.empty()
+
 N_RAW_SAMPLES = slider_samplesize
 N_QUERIES = N_RAW_SAMPLES // BATCH_SIZE
 
 performance_history = [unqueried_score]
-
+    
 for index in range(N_QUERIES):
     query_index, query_instance = learner.query(X_pool)
 
@@ -180,13 +201,10 @@ for index in range(N_QUERIES):
 
     # Calculate and report our model's accuracy.
     model_accuracy = learner.score(X_raw, y_raw)
-   # st.write('Accuracy after query {n}: {acc:0.4f}'.format(n=index + 1, acc=model_accuracy))
-
     # Save our model's performance for plotting.
     performance_history.append(model_accuracy)
-    
-    # Plot our performance over time.
-    
+    placeholder.text('Accuracy after query {n}: {acc:0.4f}'.format(n=index + 1, acc=model_accuracy))
+# Plot our performance over time.
 fig, ax = plt.subplots(figsize=(8.5, 6), dpi=130)
 
 ax.plot(performance_history)
@@ -203,9 +221,7 @@ ax.yaxis.grid(True, linestyle='--', alpha=1/2)
 ax.set_title('Incremental classification accuracy')
 ax.set_xlabel('Query iteration')
 ax.set_ylabel('Classification Accuracy')
-
-st.title('But after only a few queries, its classification gets much better.')
-
+	
 st.pyplot(fig)
 
 st.write('Accuracy after query {n}: {acc:0.4f}'.format(n=index + 1, acc=model_accuracy))
@@ -241,8 +257,7 @@ st.title('Matplot is nice (and easy to see), but Plotly can make the presentatio
 st.write('It is also easy to zoom in and out of various parts of the graph, save the graph to PNG and other nice touches.')
 st.plotly_chart(fig)
 
-st.title('Which the analyst can then reference in a combined dataframe with the original traffic record, its plotting reduction, and whether it was correct.')
-st.dataframe(df3)
+st.title('Next steps.')
+st.write('There are several potential next steps for the application, but the most immediate would be to move the data to a database and enable an analyst to correct them as a group. While it is possible to edit table data using Aggrid for Streamlit, as the table below, it would be cumbersome to use in a real-world scenario. ')
 
-
-    
+st.balloons()
