@@ -260,4 +260,3 @@ st.plotly_chart(fig)
 st.title('Next steps.')
 st.write('There are several potential next steps for the application, but the most immediate would be to move the data to a database and enable an analyst to correct them as a group. While it is possible to edit table data using Aggrid for Streamlit, as the table below, it would be cumbersome to use in a real-world scenario. ')
 
-st.balloons()
