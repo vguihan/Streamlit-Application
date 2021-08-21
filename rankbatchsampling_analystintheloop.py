@@ -73,7 +73,7 @@ st.dataframe(data1)
 #Just the numeric data to make PCA happy
 @st.cache
 def load_data2():
-    data2 = df.drop(columns=['Flow.ID','Source.IP','Source.Port','Destination.IP','Destination.Port','Protocol','Timestamp','ProtocolName'])
+    data2 = df.drop(columns=['Flow_ID','Source_IP','Source_Port','Destination_IP','Destination_Port','Protocol','Timestamp','ProtocolName'])
     return data2
 data2 = load_data2()
 dfnumerics = data2
@@ -252,7 +252,7 @@ array =  (x_component, y_component, is_correct)
 array_t = np.transpose(array)
 df2 = pd.DataFrame(array_t, columns=['x','y','correct'])
 df3 = pd.concat([df2, df], axis=1)
-fig = px.scatter(df3, x="x", y="y", color="correct", hover_data=['Flow.ID','Source.IP','Source.Port','Destination.IP','Destination.Port','Protocol','Timestamp','ProtocolName',df3.index])
+fig = px.scatter(df3, x="x", y="y", color="correct", hover_data=['Flow_ID','Source_IP','Source_Port','Destination_IP','Destination_Port','Protocol','Timestamp','ProtocolName',df3.index])
 fig.update_layout(
     title_text='Traffic classes after classification learning'
 )
@@ -280,7 +280,7 @@ df5 = df4[df4['correct'] == 0]
 
 #We'll need the correctly labeled observations again in a minute.
 df7 = df4[df4['correct'] == 1]
-df8 = df7.drop(columns=['correct'])
+df8 = df7.drop(columns=['x', 'y', 'correct'])
 
 #We don't need all the data in both the table and the scatter, do we?
 df6 = df5.drop(columns=['correct'])
@@ -288,19 +288,16 @@ df6 = df5.drop(columns=['correct'])
 gb = GridOptionsBuilder.from_dataframe(df6)
 
 #plot only the incorrectly labeled points
-fig = px.scatter(df5, x="x", y="y", color="cluster", hover_data=['Flow.Duration', 'Total.Fwd.Packets', 'Total.Backward.Packets', 'Total.Length.of.Fwd.Packets', 'Total.Length.of.Bwd.Packets', 'cluster',df5.index])
+fig = px.scatter(df5, x="x", y="y", color="cluster", hover_data=['Flow_Duration', 'Total_Fwd_Packets', 'Total_Backward_Packets', 'Total_Length_of_Fwd_Packets', 'Total_Length_of_Bwd_Packets', 'cluster',df5.index])
 fig.update_layout(title_text='Only incorrectly labelled data points')
 st.plotly_chart(fig)
 
 st.write("Here, the analyst can manually change the values in the cluster column. Change the cluster numbers by double-clicking a cell and entering a new number. You can add new cluster numbers, but that will confuse the model. To make the accuracy increase, do your best to figure out which cluster an observation should be in. When you are done changing data points. Click submit, the page will reload as a whole, and you'll be able to see if you improved the model.")
-#make the cluster column editable
-gb.configure_columns('cluster', editable=True)
 
-#Create a calculated column that updates when data is edited. Use agAnimateShowChangeCellRenderer to show changes   
-#gb.configure_column('row total', valueGetter='Number(data.a) + Number(data.b) + Number(data.c) + Number(data.d) + Number(data.e)', cellRenderer='agAnimateShowChangeCellRenderer', editable='false', type=['numericColumn'])
+#setup the form so that the page doesn't reload on every single state change
 
 with st.form('example form') as f:
-    response = AgGrid(df6, editable=True, fit_columns_on_grid_load=True)
+    response = AgGrid(df6, editable=True, fit_columns_on_grid_load=False)
     st.form_submit_button()
 
 st.title("Response Data")
@@ -308,7 +305,9 @@ st.write("These corrected values will later be put together with the correctly l
 st.write(response['data']) 
 
 dfcorrected = response['data']
+dfcorrected = dfcorrected.drop(columns=['x', 'y'])
 df9 = df8.append(dfcorrected, ignore_index=True)
+st.write(df9)
 st.title('Now, we will return the queries and see if the corrections improved the model. Until the page reloads, completely, pay no attention the graphs below.')
 
 #Starting the classification
@@ -318,9 +317,9 @@ y_raw = data_array[:10000, 5]
 
 #Much of the code for the active learning section was adapted from the modAL example application:
 #https://modal-python.readthedocs.io/en/latest/content/examples/ranked_batch_mode.html
-RANDOM_STATE_SEED = 123
-np.random.seed(RANDOM_STATE_SEED)
-pca = PCA(n_components=2, random_state=RANDOM_STATE_SEED)
+#RANDOM_STATE_SEED = 123
+#np.random.seed(RANDOM_STATE_SEED)
+#pca = PCA(n_components=2, random_state=RANDOM_STATE_SEED)
 transformed_iris = pca.fit_transform(X=X_raw)
 
 # Isolate the data we'll need for plotting.

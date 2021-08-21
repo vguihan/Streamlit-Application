@@ -53,7 +53,7 @@ df = data1
 #Just the numeric data to make PCA happy
 @st.cache
 def load_data2():
-    data2 = df.drop(columns=['Flow.ID','Source.IP','Source.Port','Destination.IP','Destination.Port','Protocol','Timestamp','ProtocolName'])
+    data2 = df.drop(columns=['Flow_ID','Source_IP','Source_Port','Destination_IP','Destination_Port','Protocol','Timestamp','ProtocolName'])
     return data2
 data2 = load_data2()
 dfnumerics = data2
@@ -81,7 +81,7 @@ dfjoiner = pd.concat([dflabels, dftransformed2, df], axis=1)
 
 fig, ax = plt.subplots()
 for i in u_labels:
-	fig = px.scatter(dfjoiner, x="x", y="y", color="cluster", hover_data=['Flow.ID','Source.IP','Source.Port','Destination.IP','Destination.Port','Protocol','Timestamp','ProtocolName',dfjoiner.index])
+	fig = px.scatter(dfjoiner, x="x", y="y", color="cluster", hover_data=['Flow_ID','Source_IP','Source_Port','Destination_IP','Destination_Port','Protocol','Timestamp','ProtocolName',dfjoiner.index])
 ax.legend()
 
 st.title('Our KMeans scatter plot and clustered dataframe. Here, the cluster number functions as the target.')
